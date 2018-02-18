@@ -1,0 +1,15 @@
+{
+  "name": "e3dc-modbus",
+  "version": "0.0.1",
+  "description": "a node.js script that connects to the E3/DC Hauskraftwerk via ModBus/TCP",
+  "main": "index.js",
+  "dependencies": {
+    "modbus-stream": "^0.39"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Stefan Stadlberger",
+  "repository": "https://github.com/sstadlberger/e3dc-modbus"
+}
