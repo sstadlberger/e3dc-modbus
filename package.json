@@ -4,6 +4,7 @@
   "description": "a node.js script that connects to the E3/DC Hauskraftwerk via ModBus/TCP",
   "main": "index.js",
   "dependencies": {
+    "async": "^2.6.0",
     "modbus-stream": "^0.39"
   },
   "devDependencies": {},
