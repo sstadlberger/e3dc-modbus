@@ -121,7 +121,8 @@ modbus.tcp.connect(502, '10.0.3.11', { debug: null }, (err, connection) => {
 });
 
 var worker = function (connection) {
-	var series = [(next) => { process.stdout.write('\033[0f'); return next(); }];
+	var series = [];
+	series.push((next) => { process.stdout.write('\x1B[2J\x1B[0f\u001b[0;0H'); return next(); });
 	config.forEach(datapoint => {
 		series.push((next) => {
 			connection.readHoldingRegisters({ address: Math.floor(datapoint.address), quantity: Math.ceil(datapoint.quantity) }, (error, result) => {
