@@ -1,7 +1,7 @@
 var modbus = require('modbus-stream');
 var async  = require('async');
 
-var config = [
+var config = {
 /*	{
 		address: 40000,
 		quantity: 1,
@@ -26,59 +26,79 @@ var config = [
 		type: 'String',
 		name: 'Seriennummer'
 	},*/
-	{
+	'40067': {
 		address: 40067,
 		quantity: 2,
 		type: 'Int32',
-		name: 'Photovoltaik-Leistung in Watt'
+		name: 'Photovoltaik-Leistung',
+		unit: 'W',
+		last: ''
 	},
-	{
-		address: 40069,
-		quantity: 1,
-		type: 'Int16',
-		name: 'Batterie-Leistung in Watt (+/-)'
-	},
-	{
-		address: 40071,
-		quantity: 2,
-		type: 'Int32',
-		name: 'Hausverbrauchs-Leistung in Watt'
-	},
-	{
-		address: 40073,
-		quantity: 2,
-		type: 'Int32',
-		name: 'Leistung am Netzübergabepunkt in Watt (+/-)',
-	},
-	{
-		address: 40081,
-		quantity: 0.5,
-		type: 'Uint8',
-		name: 'Autarkie in Prozent'
-	},
-	{
-		address: 40081.5,
-		quantity: 0.5,
-		type: 'Uint8',
-		name: 'Eigenverbrauch in Prozent'
-	},
-	{
-		address: 40082,
-		quantity: 1,
-		type: 'Uint16',
-		name: 'Batterie-SOC in Prozent'
-	},
-	{
+	'40101': {
 		address: 40101,
 		quantity: 1,
 		type: 'Uint16',
-		name: 'String 1 in Watt'
+		name: 'String 1',
+		unit: 'W',
+		last: '',
+		peak: 5130
 	},
-	{
+	'40102': {
 		address: 40102,
 		quantity: 1,
 		type: 'Uint16',
-		name: 'String 2 in Watt'
+		name: 'String 2',
+		unit: 'W',
+		last: '',
+		peak: 4845
+	},
+	'40069': {
+		address: 40069,
+		quantity: 1,
+		type: 'Int16',
+		name: 'Batterie-Leistung (+/-)',
+		unit: 'W',
+		last: ''
+	},
+	'40082': {
+		address: 40082,
+		quantity: 1,
+		type: 'Uint16',
+		name: 'Batterie-SOC',
+		unit: '%',
+		last: ''
+	},
+	'40071': {
+		address: 40071,
+		quantity: 2,
+		type: 'Int32',
+		name: 'Hausverbrauchs-Leistung',
+		unit: 'W',
+		last: ''
+	},
+	'40073': {
+		address: 40073,
+		quantity: 2,
+		type: 'Int32',
+		name: 'Leistung am Netzübergabepunkt (+/-)',
+		unit: 'W',
+		last: ''
+	},
+	'40081': {
+		address: 40081,
+		quantity: 0.5,
+		type: 'Uint8',
+		name: 'Autarkie',
+		unit: '%',
+		last: ''
+	},
+	'40081.5': {
+		address: 40081.5,
+		quantity: 0.5,
+		type: 'Uint8',
+		name: 'Eigenverbrauch',
+		unit: '%',
+		last: ''
 	},
 /*	{
 		address: 40095,
@@ -110,9 +130,12 @@ var config = [
 		type: 'Raw',
 		name: 'Debug'
 	}*/
-];
+};
 
 var e3dc;
+var keys = Object.keys(config);
+// custom sort order:
+keys = ['40067', '40101', '40102', '40069', '40082', '40071', '40073', '40081', '40081.5'];
 
 modbus.tcp.connect(502, '10.0.3.11', { debug: null }, (err, connection) => {
 	if (err) throw err;
@@ -123,8 +146,9 @@ modbus.tcp.connect(502, '10.0.3.11', { debug: null }, (err, connection) => {
 var worker = function (connection) {
 	var series = [];
 	series.push((next) => { process.stdout.write('\x1B[2J\x1B[0f\u001b[0;0H'); return next(); });
-	config.forEach(datapoint => {
+	keys.forEach(key => {
 		series.push((next) => {
+			var datapoint = config[key];
 			connection.readHoldingRegisters({ address: Math.floor(datapoint.address), quantity: Math.ceil(datapoint.quantity) }, (error, result) => {
 				if (error) throw error;
 				var all;
@@ -157,11 +181,29 @@ var worker = function (connection) {
 						console.log('Error: unknown datapoint type: %s', datapoint.type);
 						break;
 				};
-				console.log((datapoint.name + ':').padEnd(45, ' ') + value.toString().padStart(6, ' '));
+				// some extra calculations
+				var extra = ' ';
+				switch (key) {
+					case '40067':
+						// Wechselrichter Wirkungsgrad
+						if (datapoint.last) {
+							extra += '(' + parseInt((datapoint.last / (config['40101'].last + config['40102'].last)) * 100) + '%)';
+						}
+						break;
+						case '40101':
+						case '40102':
+							// Strings Wirkungsgrad
+							if (datapoint.last) {
+								extra += '(' + parseInt((value / datapoint.peak) * 100) + '%)';
+							}
+							break;
+				}
+				console.log((datapoint.name + ':').padEnd(37, ' ') + value.toString().padStart(6, ' ') + datapoint.unit + extra);
+				datapoint.last = value;
 				return next();
 			});
 		});
 	});
-	series.push((next) => { console.log('---------------------------------------------------');setTimeout(worker, 1000, e3dc); return next(); });
+	series.push((next) => { setTimeout(worker, 1000, e3dc); return next(); });
 	async.series(series);
 }
