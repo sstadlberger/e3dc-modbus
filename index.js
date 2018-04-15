@@ -188,7 +188,7 @@ var worker = function (connection) {
 				switch (key) {
 					case '40082':
 						// Batterie in KWh
-						extra += '(' + (datapoint.capacity * (value/100)) + ' kWh)';
+						extra += '(' + Math.round((datapoint.capacity * (value))) / 100 + ' kWh)';
 						break;
 					case '40067':
 						// Wechselrichter Wirkungsgrad
