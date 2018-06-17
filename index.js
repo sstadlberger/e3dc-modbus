@@ -77,7 +77,7 @@ var config = {
 		unit: 'W',
 		last: ''
 	},
-	'40071': {
+	'40077': {
 		address: 40077,
 		quantity: 2,
 		type: 'Int32',
@@ -144,7 +144,7 @@ var config = {
 var e3dc;
 var keys = Object.keys(config);
 // custom sort order:
-keys = ['40067', '40101', '40102', '40069', '40082', '40071', '40073', '40081', '40081.5'];
+keys = ['40067', '40101', '40102', '40069', '40082', '40071', '40077', '40073', '40081', '40081.5'];
 
 
 modbus.tcp.connect(502, '10.0.3.11', { debug: null }, (err, connection) => {
