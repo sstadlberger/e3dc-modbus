@@ -77,6 +77,14 @@ var config = {
 		unit: 'W',
 		last: ''
 	},
+	'40071': {
+		address: 40077,
+		quantity: 2,
+		type: 'Int32',
+		name: 'Wallbox',
+		unit: 'W',
+		last: ''
+	},
 	'40073': {
 		address: 40073,
 		quantity: 2,
