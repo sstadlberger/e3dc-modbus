@@ -109,6 +109,62 @@ var config = {
 		unit: '%',
 		last: ''
 	},
+	'40087': {
+		address: 40087,
+		quantity: 1,
+		type: 'Binary',
+		name: 'Wallbox Settings',
+		unit: ''
+	},
+/*	'40088': {
+		address: 40088,
+		quantity: 1,
+		type: 'Raw',
+		name: 'WB1',
+		unit: ''
+	},
+	'40089': {
+		address: 40089,
+		quantity: 1,
+		type: 'Raw',
+		name: 'WB2',
+		unit: ''
+	},
+	'40090': {
+		address: 40090,
+		quantity: 1,
+		type: 'Raw',
+		name: 'WB3',
+		unit: ''
+	},
+	'40091': {
+		address: 40091,
+		quantity: 1,
+		type: 'Raw',
+		name: 'WB4',
+		unit: ''
+	},
+	'40092': {
+		address: 40092,
+		quantity: 1,
+		type: 'Raw',
+		name: 'WB5',
+		unit: ''
+	},
+	'40093': {
+		address: 40093,
+		quantity: 1,
+		type: 'Raw',
+		name: 'WB6',
+		unit: ''
+	},
+	'40094': {
+		address: 40094,
+		quantity: 1,
+		type: 'Raw',
+		name: 'WB7',
+		unit: ''
+	},*/
 	/*	{
 			address: 40095,
 			quantity: 1,
@@ -144,7 +200,7 @@ var config = {
 var e3dc;
 var keys = Object.keys(config);
 // custom sort order:
-keys = ['40067', '40101', '40102', '40069', '40082', '40071', '40077', '40073', '40081', '40081.5'];
+keys = ['40067', '40101', '40102', '40069', '40082', '40071', '40077', '40073', '40081', '40081.5', '40087'];
 
 
 modbus.tcp.connect(502, '10.0.3.11', { debug: null }, (err, connection) => {
@@ -173,6 +229,14 @@ var worker = function (connection) {
 						break;
 					case 'String':
 						value = all.toString('ascii');
+						break;
+					case 'Binary':
+						value = '';
+						var hexString = all.toString('hex');
+						var parts = hexString.match(/[\s\S]{1,2}/g) || [];
+						parts.forEach(function(part) {
+							value += hex2bin(part);
+						});
 						break;
 					case 'Uint8':
 						var offset = (parseInt(datapoint.address) != datapoint.address && parseInt(datapoint.quantity) != datapoint.quantity) ? 1 : 0;
@@ -211,8 +275,82 @@ var worker = function (connection) {
 							extra += '(' + parseInt((value / datapoint.peak) * 100) + '%)';
 						}
 						break;
+					case '40087':
+						// Wallbox settings
+						var WBsettings = [
+							[
+								['Wallbox vorhanden und verfügbar', 'Wallbox vorhanden und verfügbar'],
+								['Nein', 'Ja'],
+								'R'
+							],
+							[
+								['Solarbetrieb / Mischbetrieb', 'Solarbetrieb / Mischbetrieb'],
+								['Mischbetrieb', 'Solarbetrieb'],
+								'R/W'
+							],
+							[
+								['Laden', 'Laden'],
+								['freigegeben', 'abgebrochen'],
+								'R/W'
+							],
+							[
+								['Auto lädt nicht', 'Auto lädt'],
+								['lädt nicht', 'lädt'],
+								'R'
+							],
+							[
+								['Typ-2-Stecker verriegelt', 'Typ-2-Stecker verriegelt'],
+								['Nein', 'Ja'],
+								'R'
+							],
+							[
+								['Typ-2-Stecker gesteckt', 'Typ-2-Stecker gesteckt'],
+								['Nein', 'Ja'],
+								'R'
+							],
+							[
+								['Schukosteckdose an', 'Schukosteckdose an'],
+								['Nein', 'Ja'],
+								'R/W'
+							],
+							[
+								['Schukostecker gesteckt', 'Schukostecker gesteckt'],
+								['Nein', 'Ja'],
+								'R'
+							],
+							[
+								['Schukostecker verriegelt', 'Schukostecker verriegelt'],
+								['Nein', 'Ja'],
+								'R'
+							],
+							[
+								['Relais an, 16A, 1 Phase, Schukosteckdose', 'Relais an, 16A, 1 Phase, Schukosteckdose'],
+								['Nein', 'Ja'],
+								'R'
+							],
+							[
+								['Relais an, 16A, 3 Phasen, Typ 2', 'Relais an, 16A, 3 Phasen, Typ 2'],
+								['Nein', 'Ja'],
+								'R'
+							],
+							[
+								['Relais an, 32A, 3 Phasen, Typ 2', 'Relais an, 32A, 3 Phasen, Typ 2'],
+								['Nein', 'Ja'],
+								'R'
+							],
+							[
+								['Drei Phasen aktiv', 'Eine Phase aktiv'],
+								['3', '1'],
+								'R/W'
+							]
+						];
+						var bits = value.substring(3).split('').reverse();
+						for (var i = 0; i < bits.length; i++) {
+							printResult(WBsettings[i][0][Number(bits[i])], WBsettings[i][1][Number(bits[i])], '', ' (' + WBsettings[i][2] + ')');
+						}
+						break;
 				}
-				console.log((datapoint.name + ':').padEnd(37, ' ') + value.toString().padStart(6, ' ') + datapoint.unit + extra);
+				printResult(datapoint.name, value, datapoint.unit, extra);
 				datapoint.last = value;
 				return next();
 			});
@@ -220,4 +358,12 @@ var worker = function (connection) {
 	});
 	series.push((next) => { setTimeout(worker, 1000, e3dc); return next(); });
 	async.series(series);
+}
+
+var printResult = function (name, value, unit, extra) {
+	console.log((name + ':').padEnd(42, ' ') + (value.toString() + unit).padStart(16, ' ') + extra);
+}
+
+var hex2bin = function (hex) {
+    return ('00000000' + (parseInt(hex, 16)).toString(2)).substr(-8);
 }
